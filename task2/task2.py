@@ -1,0 +1,1 @@
+# Predicting the number of strikeouts a baseball player will have in the next 10 games given the number of walks, singles, doubles, triples and homeruns in each of his last 20 games. This is a regression task.

@@ -1,0 +1,1 @@
+# Predicting the rating a user gives a product based on the term-frequency vector of their review of the product. This is also a regression task.
