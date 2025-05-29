@@ -1,9 +1,12 @@
-# Predicting the beer style from the specific ingredients (e.g., hops, yeasts, or fermentables) used to brew the beer. This is also a classification task.
+# Name: Jenny Sims
+# Date: 06/05/25
+# Description: Predicting the beer style from the specific ingredients (e.g., hops, yeasts, or fermentables) used to brew the beer. This is a classification task.
 
 import argparse
 import numpy as np
-import sklearn
-from scipy.sparse import coo_array
+import matplotlib.pyplot as plt
+from sklearn.decomposition import TruncatedSVD
+from scipy.sparse import coo_matrix
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
@@ -43,20 +46,18 @@ def parse_arguments():
     
     return parser.parse_args()
 
+# create dense array first to account for duplicate data entries (ie. 0 46 0.5 and 0 46 0.75)
+# then create sparse array to remove zeros to save memory
 def format_data(path, shape):
-    rows = []
-    cols = []
-    data = []
+    dense_array = np.zeros(shape)
 
     with open(path, 'r') as file:
         for line in file:
             row, col, value = map(float, line.strip().split())
-            rows.append(row)
-            cols.append(col)
-            data.append(value)
-    
-    array = coo_array((data, (rows, cols)), shape=shape).toarray()
-    return array
+            dense_array[(int(row), int(col))] = value
+
+    sparse_array = coo_matrix(dense_array)
+    return sparse_array
 
 def main():
     # parse arguments
@@ -72,10 +73,7 @@ def main():
     # numunits = args.nunits
     # actfunc = args.hidden_act
     # initrange = args.init_range
-    # outputdim = args.output_dim
     # learnrate = args.learnrate
-    # reportfreq = args.report_freq
-    # isverbose = args.v
 
     # get details about data from config file
     with open(config) as file:
@@ -90,16 +88,32 @@ def main():
     # training features
     trainfeat_shape = (n_train, d)
     trainfeat_array = format_data(trainfeat_fn, trainfeat_shape)
-
-    # training targets
     traintarget_array = np.loadtxt(traintarget_fn)
 
     # dev features
     devfeat_shape = (n_dev, d)
     devfeat_array = format_data(devfeat_fn, devfeat_shape)
-
-    # dev targets
     devtarget_array = np.loadtxt(devtarget_fn)
+
+    print("arrays made", flush=True)
+
+    # dimensionality reduction
+    train_tsvd = TruncatedSVD(n_components=30)
+    X_train_tsvd = train_tsvd.fit(trainfeat_array).transform(trainfeat_array)
+    X_train_reduced = train_tsvd.fit_transform(X_train_tsvd)
+
+    dev_tsvd = TruncatedSVD(n_components=60)
+    X_dev_tsvd = dev_tsvd.fit(devfeat_array).transform(devfeat_array)
+    X_dev_reduced = dev_tsvd.fit_transform(X_dev_tsvd)
+
+    # figure out how many components actually contribute/capture variance and adjust tsvd accordingly
+    # explained = np.cumsum(dev_tsvd.explained_variance_ratio_)
+    # plt.plot(explained)
+    # plt.xlabel("Number of components")
+    # plt.ylabel("Cumulative explained variance")
+    # plt.title("Choosing n_components")
+    # plt.grid(True)
+    # plt.show()
 
 if __name__ == "__main__":
     main()
