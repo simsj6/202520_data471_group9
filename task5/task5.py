@@ -2,11 +2,15 @@
 # Date: 06/05/25
 # Description: Predicting the beer style from the specific ingredients (e.g., hops, yeasts, or fermentables) used to brew the beer. This is a classification task.
 
+# example call:
+# python task5.py -config task5.config -train_feat train.sparseX -train_target train.CT -dev_feat dev.sparseX -dev_target dev.CT
+
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import TruncatedSVD
 from scipy.sparse import coo_matrix
+import torch
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
@@ -59,6 +63,9 @@ def format_data(path, shape):
     sparse_array = coo_matrix(dense_array)
     return sparse_array
 
+def standardize(X):
+    return (X - np.mean(X, axis=0)) / np.std(X, axis=0)
+
 def main():
     # parse arguments
     args = parse_arguments()
@@ -98,13 +105,16 @@ def main():
     print("arrays made", flush=True)
 
     # dimensionality reduction
-    train_tsvd = TruncatedSVD(n_components=30)
+    train_components = 30 # chosen based on figure
+    train_tsvd = TruncatedSVD(n_components=train_components)
     X_train_tsvd = train_tsvd.fit(trainfeat_array).transform(trainfeat_array)
-    X_train_reduced = train_tsvd.fit_transform(X_train_tsvd)
+    X_train = train_tsvd.fit_transform(X_train_tsvd)
 
     dev_tsvd = TruncatedSVD(n_components=60)
     X_dev_tsvd = dev_tsvd.fit(devfeat_array).transform(devfeat_array)
-    X_dev_reduced = dev_tsvd.fit_transform(X_dev_tsvd)
+    X_dev = dev_tsvd.fit_transform(X_dev_tsvd)
+
+    print("reduced :)", flush=True)
 
     # figure out how many components actually contribute/capture variance and adjust tsvd accordingly
     # explained = np.cumsum(dev_tsvd.explained_variance_ratio_)
@@ -114,6 +124,31 @@ def main():
     # plt.title("Choosing n_components")
     # plt.grid(True)
     # plt.show()
+
+    # model time 🥴
+    X = torch.Tensor(standardize(X_train))
+    y = torch.Tensor(standardize(traintarget_array))
+    n = n_train
+
+    # W = torch.Tensor([1.0, 1.0])
+    # b = 0
+    train_model = torch.nn.Linear(train_components, 1)
+    lr = 0.001
+    mse = lambda y_pred, y_true: 1 / n * torch.sum((y_pred - y_true) ** 2)
+    # mse = lambda y_pred, y_true: 1 / n * torch.sum((y_pred - y_true) ** 2)
+    # model = lambda X: X @ W + b
+    
+    for i in range(1000):
+        y_pred = train_model(X).squeeze()
+        error = mse(y_pred, y)
+        # calculate gradients
+        error.backward()
+        with torch.no_grad(): # We don't want to calculate the gradients of these operations.
+            for param in train_model.parameters():
+                param -= lr * param.grad
+                param.grad.zero_() # Zero out gradients instead of accumulating them
+        print(f"\rError: {error}", end="", flush=True)
+    print()
 
 if __name__ == "__main__":
     main()
