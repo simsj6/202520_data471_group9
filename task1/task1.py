@@ -59,7 +59,7 @@ def main():
     # Train multiclass logistic regression
     clf = LogisticRegression(
         solver='saga',
-        max_iter=10,
+        max_iter=100, # change later
         n_jobs=-1,
         verbose=0
     )
