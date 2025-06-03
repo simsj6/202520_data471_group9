@@ -13,6 +13,14 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, precision_score, recall_score
 from scipy.sparse import coo_matrix
 import torch
+import time
+import threading
+
+def stopwatch(start_time):
+    while True:
+        elapsed = time.time() - start_time
+        print(f"\rElapsed time: {time.strftime('%H:%M:%S', time.gmtime(elapsed))}", end="", flush=True)
+        time.sleep(1)
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
@@ -111,6 +119,9 @@ def initial_model(X_train, y_train, X_dev, y_dev):
     print()
 
 def main():
+    start = time.time()
+    threading.Thread(target=stopwatch, args=(start,), daemon=True).start()
+    
     # parse arguments
     args = parse_arguments()
     config = args.config
@@ -146,6 +157,7 @@ def main():
     devfeat_array = format_data(devfeat_fn, devfeat_shape)
     y_dev = np.loadtxt(devtarget_fn)
 
+    print()
     print("arrays made", flush=True)
 
     # dimensionality reduction
@@ -158,6 +170,7 @@ def main():
     X_dev_tsvd = dev_tsvd.fit(devfeat_array).transform(devfeat_array)
     X_dev = dev_tsvd.fit_transform(X_dev_tsvd)
 
+    print()
     print("reduced :)?", flush=True)
 
     # figure out how many components actually contribute/capture variance and adjust tsvd accordingly
@@ -170,25 +183,32 @@ def main():
     # plt.show()
 
     # model time 🥴
+    print()
     print("it's modelin' time") # and model all over the place
     # initial_model(X_train, y_train, X_dev, y_dev)
 
     model = LogisticRegression(max_iter=1000)
     model.fit(X_train, y_train)
+    print()
     print("fitted")
 
     y_pred_train = model.predict(X_train)
+    print()
     print("train done")
     y_pred_dev = model.predict(X_dev)
+    print()
     print("dev done")
 
+    print()
     print('Logistic Regression train accuracy = %f' % accuracy_score(y_train, y_pred_train))
     print('Logistic Regression test accuracy = %f' % accuracy_score(y_dev, y_pred_dev))
     
     # precision ill-defined and being set to 0.0
+    print()
     print('Logistic Regression train precision = %f' % precision_score(y_train, y_pred_train, average="macro"))
     print('Logistic Regression test precision = %f' % precision_score(y_dev, y_pred_dev, average="macro"))
 
+    print()
     print('Logistic Regression train recall = %f' % recall_score(y_train, y_pred_train, average="macro"))
     print('Logistic Regression test recall = %f' % recall_score(y_dev, y_pred_dev, average="macro"))
 
