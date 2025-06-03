@@ -9,6 +9,8 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import TruncatedSVD
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, precision_score, recall_score
 from scipy.sparse import coo_matrix
 import torch
 
@@ -66,6 +68,48 @@ def format_data(path, shape):
 def standardize(X):
     return (X - np.mean(X, axis=0)) / np.std(X, axis=0)
 
+class Model(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.hidden_linear = torch.nn.Linear(30, 8)
+        self.output_linear = torch.nn.Linear(8, 1)
+
+    def forward(self, x):
+        a = torch.nn.functional.relu(self.hidden_linear(x))
+        y_pred = self.output_linear(a)
+        return y_pred
+    
+def initial_model(X_train, y_train, X_dev, y_dev):
+    X = torch.Tensor(standardize(X_train))
+    y = torch.Tensor(y_train)
+
+    dev_X = torch.Tensor(standardize(X_dev))
+    dev_y = torch.Tensor(y_dev)
+
+    # train_model = torch.nn.Linear(train_components, 1)
+    model = Model()
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01) # Instantiate optimizer object
+    
+    for i in range(5000):
+        optimizer.zero_grad()
+
+        y_pred = model(X)#.squeeze()
+        print(y_pred)
+
+        # Using torch's MSE
+        # error = torch.nn.functional.mse_loss(y_pred, y)
+        loss = criterion(y_pred, y)
+        loss.backward()
+        optimizer.step()
+
+        # Calculate gradients
+        # error.backward()
+        # optimizer.step() # Update parameters
+        # optimizer.zero_grad() # Clear stored gradients
+        print(f"\rUpdate: {i}\tLoss: {loss}", end="", flush=True)
+    print()
+
 def main():
     # parse arguments
     args = parse_arguments()
@@ -95,12 +139,12 @@ def main():
     # training features
     trainfeat_shape = (n_train, d)
     trainfeat_array = format_data(trainfeat_fn, trainfeat_shape)
-    traintarget_array = np.loadtxt(traintarget_fn)
+    y_train = np.loadtxt(traintarget_fn)
 
     # dev features
     devfeat_shape = (n_dev, d)
     devfeat_array = format_data(devfeat_fn, devfeat_shape)
-    devtarget_array = np.loadtxt(devtarget_fn)
+    y_dev = np.loadtxt(devtarget_fn)
 
     print("arrays made", flush=True)
 
@@ -110,11 +154,11 @@ def main():
     X_train_tsvd = train_tsvd.fit(trainfeat_array).transform(trainfeat_array)
     X_train = train_tsvd.fit_transform(X_train_tsvd)
 
-    dev_tsvd = TruncatedSVD(n_components=60)
+    dev_tsvd = TruncatedSVD(n_components=30)
     X_dev_tsvd = dev_tsvd.fit(devfeat_array).transform(devfeat_array)
     X_dev = dev_tsvd.fit_transform(X_dev_tsvd)
 
-    print("reduced :)", flush=True)
+    print("reduced :)?", flush=True)
 
     # figure out how many components actually contribute/capture variance and adjust tsvd accordingly
     # explained = np.cumsum(dev_tsvd.explained_variance_ratio_)
@@ -126,29 +170,69 @@ def main():
     # plt.show()
 
     # model time 🥴
-    X = torch.Tensor(standardize(X_train))
-    y = torch.Tensor(standardize(traintarget_array))
-    n = n_train
+    print("it's modelin' time") # and model all over the place
+    # initial_model(X_train, y_train, X_dev, y_dev)
 
-    # W = torch.Tensor([1.0, 1.0])
-    # b = 0
-    train_model = torch.nn.Linear(train_components, 1)
-    lr = 0.001
-    mse = lambda y_pred, y_true: 1 / n * torch.sum((y_pred - y_true) ** 2)
-    # mse = lambda y_pred, y_true: 1 / n * torch.sum((y_pred - y_true) ** 2)
-    # model = lambda X: X @ W + b
+    model = LogisticRegression(max_iter=1000)
+    model.fit(X_train, y_train)
+    print("fitted")
+
+    y_pred_train = model.predict(X_train)
+    print("train done")
+    y_pred_dev = model.predict(X_dev)
+    print("dev done")
+
+    print('Logistic Regression train accuracy = %f' % accuracy_score(y_train, y_pred_train))
+    print('Logistic Regression test accuracy = %f' % accuracy_score(y_dev, y_pred_dev))
     
-    for i in range(1000):
-        y_pred = train_model(X).squeeze()
-        error = mse(y_pred, y)
-        # calculate gradients
-        error.backward()
-        with torch.no_grad(): # We don't want to calculate the gradients of these operations.
-            for param in train_model.parameters():
-                param -= lr * param.grad
-                param.grad.zero_() # Zero out gradients instead of accumulating them
-        print(f"\rError: {error}", end="", flush=True)
-    print()
+    # precision ill-defined and being set to 0.0
+    print('Logistic Regression train precision = %f' % precision_score(y_train, y_pred_train, average="macro"))
+    print('Logistic Regression test precision = %f' % precision_score(y_dev, y_pred_dev, average="macro"))
+
+    print('Logistic Regression train recall = %f' % recall_score(y_train, y_pred_train, average="macro"))
+    print('Logistic Regression test recall = %f' % recall_score(y_dev, y_pred_dev, average="macro"))
+
+    # from sklearn.svm import SVC
+
+    # # Define Model.
+    # svc_model = SVC(kernel='rbf', C=80)
+    # print("made model")
+
+    # # Train Model.
+    # svc_model.fit(X_train, y_train)
+    # print("fitted")
+
+    # # Make Predictions with model.
+    # y_pred_train = svc_model.predict(X_train)
+    # print("predicted train")
+    # y_dev_train = svc_model.predict(X_dev)
+    # print("predicted dev")
+    # print('SVC train accuracy = %f' % accuracy_score(y_train, y_pred_train))
+    # print('SVC test accuracy = %f' % accuracy_score(y_dev, y_dev_train))
+    
 
 if __name__ == "__main__":
     main()
+
+# wu-oh
+# /home/simsj6/ThirdYear/SP25/471/FinalProject/task5/.venv/lib/python3.11/site-packages/sklearn/linear_model/_logistic.py:465: ConvergenceWarning: lbfgs failed to converge (status=1):
+# STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT. # when it's literally one iteration :)
+
+# Increase the number of iterations (max_iter) or scale the data as shown in:
+#     https://scikit-learn.org/stable/modules/preprocessing.html
+# Please also refer to the documentation for alternative solver options:
+#     https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression
+#   n_iter_i = _check_optimize_result(
+# fitted
+# train done
+# dev done
+# Logistic Regression train accuracy = 0.117075
+# Logistic Regression test accuracy = 0.079925
+# /home/simsj6/ThirdYear/SP25/471/FinalProject/task5/.venv/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1565: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+#   _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+# Logistic Regression train precision = 0.011452
+# /home/simsj6/ThirdYear/SP25/471/FinalProject/task5/.venv/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1565: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+#   _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+# Logistic Regression test precision = 0.006918
+# Logistic Regression train recall = 0.018881
+# Logistic Regression test recall = 0.011219
