@@ -15,6 +15,7 @@ from scipy.sparse import coo_matrix
 import torch
 import time
 import threading
+from xgboost import XGBClassifier
 
 def stopwatch(start_time):
     while True:
@@ -149,29 +150,26 @@ def main():
     # create arrays from data
     # training features
     trainfeat_shape = (n_train, d)
-    trainfeat_array = format_data(trainfeat_fn, trainfeat_shape)
+    X_train = format_data(trainfeat_fn, trainfeat_shape)
     y_train = np.loadtxt(traintarget_fn)
 
     # dev features
     devfeat_shape = (n_dev, d)
-    devfeat_array = format_data(devfeat_fn, devfeat_shape)
+    X_dev = format_data(devfeat_fn, devfeat_shape)
     y_dev = np.loadtxt(devtarget_fn)
 
-    print()
-    print("arrays made", flush=True)
+    print("\narrays made", flush=True)
 
     # dimensionality reduction
-    train_components = 30 # chosen based on figure
-    train_tsvd = TruncatedSVD(n_components=train_components)
-    X_train_tsvd = train_tsvd.fit(trainfeat_array).transform(trainfeat_array)
-    X_train = train_tsvd.fit_transform(X_train_tsvd)
+    # train_components = 30 # chosen based on figure
+    # train_tsvd = TruncatedSVD(n_components=train_components)
+    # X_train = train_tsvd.fit(trainfeat_array).transform(trainfeat_array)
 
-    dev_tsvd = TruncatedSVD(n_components=30)
-    X_dev_tsvd = dev_tsvd.fit(devfeat_array).transform(devfeat_array)
-    X_dev = dev_tsvd.fit_transform(X_dev_tsvd)
+    # dev_tsvd = TruncatedSVD(n_components=30)
+    # X_dev_tsvd = dev_tsvd.fit(devfeat_array).transform(devfeat_array)
+    # X_dev = train_tsvd.transform(devfeat_array)
 
-    print()
-    print("reduced :)?", flush=True)
+    # print("\nreduced :)?", flush=True)
 
     # figure out how many components actually contribute/capture variance and adjust tsvd accordingly
     # explained = np.cumsum(dev_tsvd.explained_variance_ratio_)
@@ -183,35 +181,54 @@ def main():
     # plt.show()
 
     # model time 🥴
-    print()
-    print("it's modelin' time") # and model all over the place
+    print("\nit's modelin' time") # and model all over the place
+
+    # XGBOOST
+    n_est = 1000
+    max_depth = 50
+    lr = 0.1
+    objective = "multi:softmax"
+    print("\nXGBoost with n_estimators=%d, max_depth=%d, learning_rate=%.3f, objective=%s" % (n_est, max_depth, lr, objective))
+    bst = XGBClassifier(n_estimators=n_est, max_depth=max_depth, learning_rate=lr, objective=objective)
+    # fit model
+    bst.fit(X_train, y_train)
+    # make predictions
+    y_pred_train = bst.predict(X_train)
+    y_dev_train = bst.predict(X_dev)
+
+    print('\nXGBoost train accuracy = %f' % accuracy_score(y_train, y_pred_train))
+    print('XGBoost test accuracy = %f' % accuracy_score(y_dev, y_dev_train))
+
+
+    # NEURAL NETWORK
     # initial_model(X_train, y_train, X_dev, y_dev)
 
-    model = LogisticRegression(max_iter=1000)
-    model.fit(X_train, y_train)
-    print()
-    print("fitted")
 
-    y_pred_train = model.predict(X_train)
-    print()
-    print("train done")
-    y_pred_dev = model.predict(X_dev)
-    print()
-    print("dev done")
+    # time.sleep(1)
+    # # LOGISTIC REGRESSION
+    # max_iterations = 1000
+    # print("\nLogistic Regression with max_iter=%d" % (max_iterations))
+    # model = LogisticRegression(max_iter=max_iterations)
+    # model.fit(X_train, y_train)
+    # # print("\nfitted")
 
-    print()
-    print('Logistic Regression train accuracy = %f' % accuracy_score(y_train, y_pred_train))
-    print('Logistic Regression test accuracy = %f' % accuracy_score(y_dev, y_pred_dev))
+    # y_pred_train = model.predict(X_train)
+    # # print("\ntrain done")
+    # y_pred_dev = model.predict(X_dev)
+    # print("\npredicting done")
+
+    # print('Logistic Regression train accuracy = %f' % accuracy_score(y_train, y_pred_train))
+    # print('Logistic Regression test accuracy = %f' % accuracy_score(y_dev, y_pred_dev))
     
-    # precision ill-defined and being set to 0.0
-    print()
-    print('Logistic Regression train precision = %f' % precision_score(y_train, y_pred_train, average="macro"))
-    print('Logistic Regression test precision = %f' % precision_score(y_dev, y_pred_dev, average="macro"))
+    # # precision ill-defined and being set to 0.0
+    # print('\nLogistic Regression train precision = %f' % precision_score(y_train, y_pred_train, average="macro"))
+    # print('Logistic Regression test precision = %f' % precision_score(y_dev, y_pred_dev, average="macro"))
 
-    print()
-    print('Logistic Regression train recall = %f' % recall_score(y_train, y_pred_train, average="macro"))
-    print('Logistic Regression test recall = %f' % recall_score(y_dev, y_pred_dev, average="macro"))
+    # print('\nLogistic Regression train recall = %f' % recall_score(y_train, y_pred_train, average="macro"))
+    # print('Logistic Regression test recall = %f' % recall_score(y_dev, y_pred_dev, average="macro"))
 
+
+    # SVM
     # from sklearn.svm import SVC
 
     # # Define Model.
