@@ -1,0 +1,10 @@
+model 2
+
+training accuracy,dev accuracy,predictions
+
+0.35638405515748356
+
+0.3697861555790695
+
+[22.  2. 29. ...  0. 10. 25.]
+

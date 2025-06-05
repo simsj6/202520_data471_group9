@@ -1,0 +1,10 @@
+model 3
+
+training accuracy,dev accuracy,predictions
+
+0.3563211087971951
+
+0.3695557565621053
+
+[18.  2. 29. ...  0. 10. 25.]
+
