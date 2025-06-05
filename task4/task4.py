@@ -11,6 +11,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import precision_recall_curve
 from sklearn.metrics import f1_score
 from sklearn.svm import SVC, LinearSVC
+from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import GridSearchCV
 import matplotlib as plot
 
@@ -34,16 +35,18 @@ devtargs = np.loadtxt(devtargsf)
 # *********************************************
 # set up model
 # *********************************************
-csvfile = open("task4/forplot4.csv", "w")
+csvfile = open("task4/forplot5.csv", "w")
 writer = csv.writer(csvfile)
 dimensions = open(paramsf, "r").readlines()[3].split(" ")[-1].strip()
 floatdim = float(dimensions)
 
 print("starting tuning")
-sv_model_1 = LinearSVC(C=1.0)
-sv_model_2 = LinearSVC(C=0.1)
-sv_model_3 = LinearSVC(C=0.01)
-sv_model_4 = LinearSVC(C=2.0)
+# sv_model_1 = LinearSVC(C=1.0)
+# sv_model_2 = LinearSVC(C=0.1)
+# sv_model_3 = LinearSVC(C=0.01)
+# sv_model_4 = LinearSVC(C=2.0)
+sv_model_5 = LinearSVC(C=10.0)
+# nn_model_6 = MLPClassifier()
 print("finished tuning")
 
 # *********************************************
@@ -98,14 +101,30 @@ print("finished tuning")
 # writer.writerow([pred_dev])
 # print("done")
 
+# tested
+# writer.writerow(["model 4"])
+# writer.writerow(["training accuracy", "dev accuracy", "predictions"])
+# print("beginning training")
+# sv_model_4 = sv_model_4.fit(trainfeats, traintargs)
+# print("beginning predicting")
+# pred_train = sv_model_4.predict(trainfeats)
+# pred_dev = sv_model_4.predict(devfeats)
+# print("measuring loss")
+# writer.writerow([accuracy_score(traintargs, pred_train)])
+# writer.writerow([accuracy_score(devtargs, pred_dev)])
+# # writer.writerow([f1_score(traintargs, pred_train, average='samples')])
+# # writer.writerow([f1_score(devtargs, pred_dev, average='samples')])
+# writer.writerow([pred_dev])
+# print("done")
+
 # testing
-writer.writerow(["model 4"])
+writer.writerow(["model 5"])
 writer.writerow(["training accuracy", "dev accuracy", "predictions"])
 print("beginning training")
-sv_model_4 = sv_model_4.fit(trainfeats, traintargs)
+sv_model_5 = sv_model_5.fit(trainfeats, traintargs)
 print("beginning predicting")
-pred_train = sv_model_4.predict(trainfeats)
-pred_dev = sv_model_4.predict(devfeats)
+pred_train = sv_model_5.predict(trainfeats)
+pred_dev = sv_model_5.predict(devfeats)
 print("measuring loss")
 writer.writerow([accuracy_score(traintargs, pred_train)])
 writer.writerow([accuracy_score(devtargs, pred_dev)])
@@ -113,3 +132,19 @@ writer.writerow([accuracy_score(devtargs, pred_dev)])
 # writer.writerow([f1_score(devtargs, pred_dev, average='samples')])
 writer.writerow([pred_dev])
 print("done")
+
+# # untested
+# writer.writerow(["model 6"])
+# writer.writerow(["training accuracy", "dev accuracy", "predictions"])
+# print("beginning training")
+# nn_model_6 = nn_model_6.fit(trainfeats, traintargs)
+# print("beginning predicting")
+# pred_train = nn_model_6.predict(trainfeats)
+# pred_dev = nn_model_6.predict(devfeats)
+# print("measuring loss")
+# writer.writerow([accuracy_score(traintargs, pred_train)])
+# writer.writerow([accuracy_score(devtargs, pred_dev)])
+# # writer.writerow([f1_score(traintargs, pred_train, average='samples')])
+# # writer.writerow([f1_score(devtargs, pred_dev, average='samples')])
+# writer.writerow([pred_dev])
+# print("done")
