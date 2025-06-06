@@ -2,14 +2,28 @@
 import argparse
 import numpy as np
 from sklearn.linear_model import LinearRegression
+from sklearn import svm
+import matplotlib.pyplot as plt
+from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import r2_score
+from sklearn.metrics import mean_squared_error
 from scipy.sparse import coo_matrix
 from sklearn.exceptions import ConvergenceWarning
 import warnings
 import torch
 
+import time
+import threading
+
 # python task3.py -config "./task3_ratings/task3.config" -train_feat "./task3_ratings/train.sparseX" -train_target "./task3_ratings/train.RT" -dev_feat "./task3_ratings/dev.sparseX" -dev_target "./task3_ratings/dev.RT"
 
+def stopwatch(start_time):
+    while True:
+        elapsed = time.time() - start_time
+        print(f"\rElapsed time: {time.strftime('%H:%M:%S', time.gmtime(elapsed))}", end="", flush=True)
+        time.sleep(1)
+        
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('-config', type=str, required=True, 
@@ -36,20 +50,18 @@ def load_config(path):
 
 # Load sparse data as sparse matrix
 def load_sparse(path, shape):
-    rows, cols, vals = [], [], []
+    dense_array = np.zeros(shape)
+
     with open(path, 'r') as file:
         for line in file:
-            lineList = list(map(float, line.strip().split()))
-            # row, col, value = map(float, line.strip().split())
-            row = lineList[0]
-            col = lineList[1]
-            value = lineList[2]
-            rows.append(int(row))
-            cols.append(int(col))
-            vals.append(value)
-    return coo_matrix((vals, (rows, cols)), shape=shape)
+            row, col, value = map(float, line.strip().split())
+            dense_array[(int(row), int(col))] = value
+
+    sparse_array = coo_matrix(dense_array)
+    return sparse_array
 
 def standardize(X):
+    svd = TruncatedSVD()
     return (X - np.mean(X, axis=0)) / np.std(X, axis=0)
 
 class Model(torch.nn.Module):
@@ -78,26 +90,29 @@ def initial_model(X_train, y_train, X_dev, y_dev):
     # train_model = torch.nn.Linear(train_components, 1)
     model = Model(X_train.shape[1])
     # model = torch.nn.Linear(X_train.shape[1], 1)
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.01) # Instantiate optimizer object
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.02) # Instantiate optimizer object
     
-    for i in range(1000):
-        y_pred = model(X).squeeze()
+    for i in range(2000):
+        y_train_pred = model(X).squeeze()
 
         # Using torch's MSE
-        error = torch.nn.functional.mse_loss(y_pred, y)
+        error = r2_score(y_train, y_train_pred)
 
         # Calculate gradients
         error.backward()
         optimizer.step() # Update parameters
         optimizer.zero_grad() # Clear stored gradients
-        print(f"\rUpdate: {i + 1}\tError: {error}", end="", flush=True)
+        print(f"\rUpdate: {i + 1}\tR2: {error}", end="", flush=True)
     print()
 
-    y_pred_dev = model(dev_X).squeeze()
-    dev_error = torch.nn.functional.mse_loss(y_pred_dev, dev_y)
-    print(f"Dev Error: {dev_error}")
+    y_dev_pred = model(dev_X).squeeze()
+    dev_error = r2_score(y_dev, y_dev_pred)
+    print(f"Dev R2: {dev_error}")
 
 def main():
+    start = time.time()
+    threading.Thread(target=stopwatch, args=(start,), daemon=True).start()
+    
     # parse arguments
     args = parse_arguments()
     config_fn = args.config
@@ -122,8 +137,54 @@ def main():
 
     print("arrays made", flush=True)
 
-    print("Running model")
-    initial_model(X_train, y_train, X_dev, y_dev)
+    # DIMENSIONALITY REDUCTION
+    train_components = 6000
+    train_tsvd = TruncatedSVD(n_components=train_components)
+    X_train_tsvd = train_tsvd.fit(X_train).transform(X_train)
+    X_train = train_tsvd.fit_transform(X_train_tsvd)
+
+    dev_tsvd = TruncatedSVD(n_components=6000)
+    X_dev_tsvd = dev_tsvd.fit(X_dev).transform(X_dev)
+    X_dev = dev_tsvd.fit_transform(X_dev_tsvd)
+
+    print()
+    print("reduced :)?", flush=True)
+
+    # figure out how many components actually contribute/capture variance and adjust tsvd accordingly
+    # explained = np.cumsum(dev_tsvd.explained_variance_ratio_)
+    # plt.plot(explained)
+    # plt.xlabel("Number of components")
+    # plt.ylabel("Cumulative explained variance")
+    # plt.title("Choosing n_components")
+    # plt.grid(True)
+    # plt.show()
+
+    print("Model limping")
+    
+    # Neural network implementation
+    
+    # initial_model(X_train, y_train, X_dev, y_dev)
+    
+    
+    # LinearSVR implementation
+    
+    SVR_model = svm.LinearSVR()
+    SVR_model.fit(X_train, y_train)
+    print("SVR_model made and data fitted")
+    
+    y_train_pred = SVR_model.predict(X_train)
+    print("predicted train")
+    y_dev_pred = SVR_model.predict(X_dev)
+    print("predicted dev")
+    
+    plt.scatter(y_train, y_train_pred, s=5, c=X_train[:, 2])
+    plt.title("Predicted Body Mass One-to-one")
+    plt.xlabel("True Values")
+    plt.ylabel("Predicted Values")
+    plt.show()
+    
+    print('SVR train r2 = %f' % r2_score(y_train, y_train_pred))
+    print('SVR dev r2 = %f' % r2_score(y_dev, y_dev_pred))
 
 if __name__ == "__main__":
     main()
