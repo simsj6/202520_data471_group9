@@ -1,5 +1,0 @@
-model 4
-training accuracy,dev accuracy,predictions
-0.3563075782711517
-0.36916749155203604
-[18.  2. 29. ...  0. 10. 25.]
