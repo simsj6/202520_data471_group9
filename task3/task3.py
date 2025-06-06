@@ -178,7 +178,7 @@ def main():
     print("predicted dev")
     
     plt.scatter(y_train, y_train_pred, s=5, c=X_train[:, 2])
-    plt.title("Predicted Body Mass One-to-one")
+    plt.title("Predicted to True One-to-one")
     plt.xlabel("True Values")
     plt.ylabel("Predicted Values")
     plt.show()
