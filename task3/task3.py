@@ -96,18 +96,24 @@ def initial_model(X_train, y_train, X_dev, y_dev):
         y_train_pred = model(X).squeeze()
 
         # Using torch's MSE
-        error = r2_score(y_train, y_train_pred)
+        error = torch.nn.functional.mse_loss(y_train_pred, y)
 
         # Calculate gradients
         error.backward()
         optimizer.step() # Update parameters
         optimizer.zero_grad() # Clear stored gradients
-        print(f"\rUpdate: {i + 1}\tR2: {error}", end="", flush=True)
+        print(f"\rUpdate: {i + 1}\tError: {error}", end="", flush=True)
     print()
 
     y_dev_pred = model(dev_X).squeeze()
-    dev_error = r2_score(y_dev, y_dev_pred)
-    print(f"Dev R2: {dev_error}")
+    dev_error = torch.nn.functional.mse_loss(y_dev_pred, dev_y)
+    print(f"Dev Error: {dev_error}")
+    
+    # plt.scatter(y_train, y_train_pred, s=5)
+    # plt.title("Predicted to True One-to-one")
+    # plt.xlabel("True Values")
+    # plt.ylabel("Predicted Values")
+    # plt.show()
 
 def main():
     start = time.time()
@@ -151,40 +157,40 @@ def main():
     print("reduced :)?", flush=True)
 
     # figure out how many components actually contribute/capture variance and adjust tsvd accordingly
-    # explained = np.cumsum(dev_tsvd.explained_variance_ratio_)
-    # plt.plot(explained)
-    # plt.xlabel("Number of components")
-    # plt.ylabel("Cumulative explained variance")
-    # plt.title("Choosing n_components")
-    # plt.grid(True)
-    # plt.show()
+    explained = np.cumsum(dev_tsvd.explained_variance_ratio_)
+    plt.plot(explained)
+    plt.xlabel("Number of components")
+    plt.ylabel("Cumulative explained variance")
+    plt.title("Choosing n_components")
+    plt.grid(True)
+    plt.show()
 
     print("Model limping")
     
     # Neural network implementation
     
-    # initial_model(X_train, y_train, X_dev, y_dev)
+    initial_model(X_train, y_train, X_dev, y_dev)
     
     
     # LinearSVR implementation
     
-    SVR_model = svm.LinearSVR()
-    SVR_model.fit(X_train, y_train)
-    print("SVR_model made and data fitted")
+    # SVR_model = svm.LinearSVR(C=0.5)
+    # SVR_model.fit(X_train, y_train)
+    # print("SVR_model made and data fitted")
     
-    y_train_pred = SVR_model.predict(X_train)
-    print("predicted train")
-    y_dev_pred = SVR_model.predict(X_dev)
-    print("predicted dev")
+    # y_train_pred = SVR_model.predict(X_train)
+    # print("predicted train")
+    # y_dev_pred = SVR_model.predict(X_dev)
+    # print("predicted dev")
     
-    plt.scatter(y_train, y_train_pred, s=5, c=X_train[:, 2])
-    plt.title("Predicted to True One-to-one")
-    plt.xlabel("True Values")
-    plt.ylabel("Predicted Values")
-    plt.show()
+    # plt.scatter(y_train, y_train_pred, s=5)
+    # plt.title("Predicted to True One-to-one")
+    # plt.xlabel("True Values")
+    # plt.ylabel("Predicted Values")
+    # plt.show()
     
-    print('SVR train r2 = %f' % r2_score(y_train, y_train_pred))
-    print('SVR dev r2 = %f' % r2_score(y_dev, y_dev_pred))
+    # print('SVR train r2 = %f' % r2_score(y_train, y_train_pred))
+    # print('SVR dev r2 = %f' % r2_score(y_dev, y_dev_pred))
 
 if __name__ == "__main__":
     main()
