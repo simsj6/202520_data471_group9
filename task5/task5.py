@@ -36,28 +36,6 @@ def parse_arguments():
                         help='Development set feature file')
     parser.add_argument('-dev_target', type=str, required=True,
                         help='Development set target file')
-    # parser.add_argument('-nunits', type=int, required=True,
-    #                     help='Number of hidden units per layer')
-    # parser.add_argument('-nlayers', type=int, required=True,
-    #                     help='Number of hidden layers')
-    # parser.add_argument('-hidden_act', type=str, required=True, choices=['sig', 'tanh', 'relu'],
-    #                     help='Hidden unit activation function')
-    # parser.add_argument('-type', type=str, required=True, choices=['C', 'R'],
-    #                     help='Problem mode: C for classification, R for regression')
-    # parser.add_argument('-output_dim', type=int, required=True,
-    #                     help='Number of classes or output dimension')
-    # parser.add_argument('-total_updates', type=int, required=True,
-    #                     help='Total number of updates (gradient steps)')
-    # parser.add_argument('-learnrate', type=float, required=True,
-    #                     help='Learning rate')
-    # parser.add_argument('-init_range', type=float, required=True,
-    #                     help='Range for uniform random initialization')
-    # parser.add_argument('-mb', type=int, required=True,
-    #                     help='Minibatch size (0 for full batch)')
-    # parser.add_argument('-report_freq', type=int, required=True,
-    #                     help='Frequency of reporting performance')
-    # parser.add_argument('-v', action='store_true',
-    #                     help='Verbose mode')
     
     return parser.parse_args()
 
@@ -120,8 +98,8 @@ def initial_model(X_train, y_train, X_dev, y_dev):
     print()
 
 def main():
-    start = time.time()
-    threading.Thread(target=stopwatch, args=(start,), daemon=True).start()
+    # start = time.time()
+    # threading.Thread(target=stopwatch, args=(start,), daemon=True).start()
     
     # parse arguments
     args = parse_arguments()
@@ -130,13 +108,6 @@ def main():
     traintarget_fn = args.train_target
     devfeat_fn = args.dev_feat
     devtarget_fn = args.dev_target
-    # numupdates = args.total_updates
-    # mode = args.type
-    # numlayers = args.nlayers
-    # numunits = args.nunits
-    # actfunc = args.hidden_act
-    # initrange = args.init_range
-    # learnrate = args.learnrate
 
     # get details about data from config file
     with open(config) as file:
@@ -159,6 +130,24 @@ def main():
     y_dev = np.loadtxt(devtarget_fn)
 
     print("\narrays made", flush=True)
+
+    # BASELINE CALCULATION
+    train_classes = [0] * c
+    for i in range(n_train):
+        train_classes[int(y_train[i])] += 1
+    
+    train_majority = max(train_classes)
+    train_baseline = train_majority / n_train
+
+    dev_classes = [0] * c
+    for i in range(n_dev):
+        dev_classes[int(y_dev[i])] += 1
+    
+    dev_majority = max(dev_classes)
+    dev_baseline = dev_majority / n_dev
+
+    print("Train baseline: %f" % train_baseline)
+    print("Dev baseline: %f" % dev_baseline)
 
     # dimensionality reduction
     # train_components = 30 # chosen based on figure
@@ -184,20 +173,21 @@ def main():
     print("\nit's modelin' time") # and model all over the place
 
     # XGBOOST
-    n_est = 1000
-    max_depth = 50
-    lr = 0.1
-    objective = "multi:softmax"
-    print("\nXGBoost with n_estimators=%d, max_depth=%d, learning_rate=%.3f, objective=%s" % (n_est, max_depth, lr, objective))
-    bst = XGBClassifier(n_estimators=n_est, max_depth=max_depth, learning_rate=lr, objective=objective)
-    # fit model
-    bst.fit(X_train, y_train)
-    # make predictions
-    y_pred_train = bst.predict(X_train)
-    y_dev_train = bst.predict(X_dev)
+    # n_est = 5000
+    # max_depth = 7
+    # lr = 0.01
+    # objective = "multi:softmax"
+    # print("\nXGBoost with n_estimators=%d, max_depth=%d, learning_rate=%.3f, objective=%s" % (n_est, max_depth, lr, objective))
+    # bst = XGBClassifier(n_estimators=n_est, max_depth=max_depth, learning_rate=lr, objective=objective)
+    # # fit model
+    # bst.fit(X_train, y_train)
+    # print("\nfitted")
+    # # make predictions
+    # y_pred_train = bst.predict(X_train)
+    # y_dev_train = bst.predict(X_dev)
 
-    print('\nXGBoost train accuracy = %f' % accuracy_score(y_train, y_pred_train))
-    print('XGBoost test accuracy = %f' % accuracy_score(y_dev, y_dev_train))
+    # print('\nXGBoost train accuracy = %f' % accuracy_score(y_train, y_pred_train))
+    # print('XGBoost test accuracy = %f' % accuracy_score(y_dev, y_dev_train))
 
 
     # NEURAL NETWORK
@@ -251,25 +241,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-# wu-oh
-# /home/simsj6/ThirdYear/SP25/471/FinalProject/task5/.venv/lib/python3.11/site-packages/sklearn/linear_model/_logistic.py:465: ConvergenceWarning: lbfgs failed to converge (status=1):
-# STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT. # when it's literally one iteration :)
-
-# Increase the number of iterations (max_iter) or scale the data as shown in:
-#     https://scikit-learn.org/stable/modules/preprocessing.html
-# Please also refer to the documentation for alternative solver options:
-#     https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression
-#   n_iter_i = _check_optimize_result(
-# fitted
-# train done
-# dev done
-# Logistic Regression train accuracy = 0.117075
-# Logistic Regression test accuracy = 0.079925
-# /home/simsj6/ThirdYear/SP25/471/FinalProject/task5/.venv/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1565: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
-#   _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
-# Logistic Regression train precision = 0.011452
-# /home/simsj6/ThirdYear/SP25/471/FinalProject/task5/.venv/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1565: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
-#   _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
-# Logistic Regression test precision = 0.006918
-# Logistic Regression train recall = 0.018881
-# Logistic Regression test recall = 0.011219
