@@ -6,6 +6,9 @@
 # how to call
 # python task1.py -config proj_data/task1_topics/task1.config -train_feat proj_data/task1_topics/train.sparseX -train_target proj_data/task1_topics/train.CT -dev_feat proj_data/task1_topics/dev.sparseX -dev_target proj_data/task1_topics/dev.CT
 
+# call with test sparse
+# python task1.py -config proj_data/task1_topics/task1.config -train_feat proj_data/task1_topics/train.sparseX -train_target proj_data/task1_topics/train.CT -dev_feat proj_data/task1_topics/dev.sparseX -dev_target proj_data/task1_topics/dev.CT -test_feat test_features/task1/test.sparseX -out_pred task1.predictions
+
 import argparse
 import numpy as np
 from sklearn.linear_model import LogisticRegression
@@ -15,15 +18,19 @@ from scipy.sparse import coo_matrix
 import warnings
 import wandb
 
+
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-config', type=str, required=True)
-    parser.add_argument('-train_feat', type=str, required=True)
-    parser.add_argument('-train_target', type=str, required=True)
-    parser.add_argument('-dev_feat', type=str, required=True)
-    parser.add_argument('-dev_target', type=str, required=True)
+    parser.add_argument('-config', type=str, required=True, help='Task config file')
+    parser.add_argument('-train_feat', type=str, required=True, help='Training set feature file')
+    parser.add_argument('-train_target', type=str, required=True, help='Training set target file')
+    parser.add_argument('-dev_feat', type=str, required=True, help='Development set feature file')
+    parser.add_argument('-dev_target', type=str, required=True, help='Development set target file')
+    parser.add_argument('-test_feat', type=str, required=False, help='Testing set feature file')
+    parser.add_argument('-out_pred', type=str, required=False, help='Prediction output file name')
     parser.add_argument('--max_iter', type=int, default=1000)
     return parser.parse_args()
+
 
 # load config file
 def load_config(path):
@@ -35,23 +42,26 @@ def load_config(path):
     c = int(token[7])
     return n_train, n_dev, d, c
 
+
 # load sparse file
-def load_sparse(path, shape):
+def load_sparse(path, shape=None):
     rows, cols, vals = [], [], []
     with open(path, 'r') as file:
         for line in file:
             row, col, value = map(float, line.strip().split())
-            rows.append(int(row))
-            cols.append(int(col))
+            row, col = int(row), int(col)
+            rows.append(row)
+            cols.append(col)
             vals.append(value)
     return coo_matrix((vals, (rows, cols)), shape=shape)
+
 
 def main():
     args = parse_arguments()
     n_train, n_dev, d, c = load_config(args.config)
     print(f"Train docs: {n_train}, Dev docs: {n_dev}, Vocab size: {d}, Classes: {c}")
 
-    # Initialize Weights & Biases run and log hyperparameters
+    # Initialize Weights & Biases run
     wandb.init(
         project="multiclass-text-classification",
         config={
@@ -102,14 +112,12 @@ def main():
     train_classes = [0] * c
     for i in range(n_train):
         train_classes[int(y_train[i])] += 1
-
     train_majority = max(train_classes)
     train_baseline = train_majority / n_train
 
     dev_classes = [0] * c
     for i in range(n_dev):
         dev_classes[int(y_dev[i])] += 1
-
     dev_majority = max(dev_classes)
     dev_baseline = dev_majority / n_dev
 
@@ -136,6 +144,20 @@ def main():
     wandb.log({"Sample Predictions (Dev Set)": pred_table})
 
     wandb.finish()
+
+    # Test prediction given a test sparse, preventing contamination from other set
+    if args.test_feat and args.out_pred:
+        print("Load test data")
+        X_test = load_sparse(args.test_feat).tocsr()
+        print(f"Test instances: {X_test.shape[0]}")
+        print("Generating predictions")
+
+        test_predictions = clf.predict(X_test)
+
+        with open(args.out_pred, 'w') as f:
+            for label in test_predictions:
+                f.write(f"{label}\n")
+        print("Done")
 
 if __name__ == "__main__":
     main()
