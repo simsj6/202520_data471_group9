@@ -23,6 +23,7 @@ trainfeatsf = "proj_data/task4_phoneme/train.X"
 traintargsf = "proj_data/task4_phoneme/train.CT"
 devfeatsf = "proj_data/task4_phoneme/dev.X"
 devtargsf = "proj_data/task4_phoneme/dev.CT"
+testfeats = "proj_data/test.X"
 
 trainfeats = np.loadtxt(trainfeatsf)
 traintargs = np.loadtxt(traintargsf)
@@ -37,7 +38,7 @@ devtargs = np.loadtxt(devtargsf)
 # *********************************************
 # set up model
 # *********************************************
-csvfile = open("task4/forplot14.csv", "w")
+csvfile = open("deliverables/task4.predictions", "w")
 writer = csv.writer(csvfile)
 dimensions = open(paramsf, "r").readlines()[3].split(" ")[-1].strip()
 floatdim = float(dimensions)
@@ -369,3 +370,11 @@ print("done")
 # # writer.writerow([f1_score(devtargs, pred_dev, average='samples')])
 # writer.writerow([pred_dev])
 # print("done")
+
+# final model used to predict:
+print("beginning training")
+xg_model_14 = xg_model_14.fit(trainfeats, traintargs)
+print("beginning predicting")
+predictions = xg_model_14.predict(testfeats)
+writer.writerow([predictions])
+print("done")
