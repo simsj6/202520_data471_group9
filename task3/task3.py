@@ -169,28 +169,57 @@ def main():
     
     # Neural network implementation
     
-    initial_model(X_train, y_train, X_dev, y_dev)
+    # initial_model(X_train, y_train, X_dev, y_dev)
     
     
     # LinearSVR implementation
     
-    # SVR_model = svm.LinearSVR(C=0.5)
-    # SVR_model.fit(X_train, y_train)
-    # print("SVR_model made and data fitted")
+    SVR_model = svm.LinearSVR(C=0.5)
+    SVR_model.fit(X_train, y_train)
+    print("SVR_model made and data fitted")
     
-    # y_train_pred = SVR_model.predict(X_train)
-    # print("predicted train")
-    # y_dev_pred = SVR_model.predict(X_dev)
-    # print("predicted dev")
+    y_train_pred = SVR_model.predict(X_train)
+    print("predicted train")
+    y_dev_pred = SVR_model.predict(X_dev)
+    print("predicted dev")
     
-    # plt.scatter(y_train, y_train_pred, s=5)
-    # plt.title("Predicted to True One-to-one")
-    # plt.xlabel("True Values")
-    # plt.ylabel("Predicted Values")
-    # plt.show()
+    plt.scatter(y_train, y_train_pred, s=5)
+    plt.title("Predicted to True One-to-one")
+    plt.xlabel("True Values")
+    plt.ylabel("Predicted Values")
+    plt.show()
     
-    # print('SVR train r2 = %f' % r2_score(y_train, y_train_pred))
-    # print('SVR dev r2 = %f' % r2_score(y_dev, y_dev_pred))
+    print('SVR train r2 = %f' % r2_score(y_train, y_train_pred))
+    print('SVR dev r2 = %f' % r2_score(y_dev, y_dev_pred))
 
+    # create prediction file
+
+    # parse
+    rowMax = 0
+    colMax = 0
+    with open("./task3_ratings/test.sparseX", 'r') as file:
+        for line in file:
+            row, col, value = map(float, line.strip().split())
+            rowMax = max(row, rowMax) # for indices
+            colMax = max(col, colMax) # for indices
+            
+        # account for 0 index
+        rowMax += 1
+        colMax += 1
+
+    X_test = load_sparse("./task3_ratings/test.sparseX", (int(rowMax), int(colMax))).tocsr()
+    
+    # dimensionality reduction
+    test_tsvd = TruncatedSVD(n_components=6000)
+    X_test_tsvd = test_tsvd.fit(X_test).transform(X_test)
+    X_test = test_tsvd.fit_transform(X_test_tsvd)
+    
+    # predict
+    y_test_pred = SVR_model.predict(X_test)
+    print("predicted test")
+    
+    np.savetxt("task5.predictions", y_test_pred, fmt="%d")
+    print("test predictions saved to \"task5.predictions\"!")
+    
 if __name__ == "__main__":
     main()
