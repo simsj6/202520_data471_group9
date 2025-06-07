@@ -23,12 +23,13 @@ trainfeatsf = "proj_data/task4_phoneme/train.X"
 traintargsf = "proj_data/task4_phoneme/train.CT"
 devfeatsf = "proj_data/task4_phoneme/dev.X"
 devtargsf = "proj_data/task4_phoneme/dev.CT"
-testfeats = "proj_data/test.X"
+testfeatsf = "proj_data/task4_phoneme/test.X"
 
 trainfeats = np.loadtxt(trainfeatsf)
 traintargs = np.loadtxt(traintargsf)
 devfeats = np.loadtxt(devfeatsf)
 devtargs = np.loadtxt(devtargsf)
+testfeats = np.loadtxt(testfeatsf)
 
 # *********************************************
 # put into usable format
@@ -300,19 +301,19 @@ print("finished tuning")
 # print("done")
 
 # tested 
-writer.writerow(["model 14"])
-writer.writerow(["training accuracy", "dev accuracy", "predictions"])
+# writer.writerow(["model 14"])
+# writer.writerow(["training accuracy", "dev accuracy", "predictions"])
 print("beginning training")
 xg_model_14 = xg_model_14.fit(trainfeats, traintargs)
 print("beginning predicting")
 pred_train = xg_model_14.predict(trainfeats)
 pred_dev = xg_model_14.predict(devfeats)
 print("measuring loss")
-writer.writerow([accuracy_score(traintargs, pred_train)])
-writer.writerow([accuracy_score(devtargs, pred_dev)])
+print([accuracy_score(traintargs, pred_train)])
+print([accuracy_score(devtargs, pred_dev)])
 # writer.writerow([f1_score(traintargs, pred_train, average='samples')])
 # writer.writerow([f1_score(devtargs, pred_dev, average='samples')])
-writer.writerow([pred_dev])
+# writer.writerow([pred_dev])
 print("done")
 
 # # tested
@@ -373,8 +374,8 @@ print("done")
 
 # final model used to predict:
 print("beginning training")
-xg_model_14 = xg_model_14.fit(trainfeats, traintargs)
+# xg_model_14 = xg_model_14.fit(trainfeats, traintargs)
 print("beginning predicting")
 predictions = xg_model_14.predict(testfeats)
-writer.writerow([predictions])
+np.savetxt("deliverables/task4.predictions", predictions, fmt="%d")
 print("done")
