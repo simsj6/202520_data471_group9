@@ -59,7 +59,7 @@ def load_sparse(path, shape=None):
 def main():
     args = parse_arguments()
     n_train, n_dev, d, c = load_config(args.config)
-    print(f"Train docs: {n_train}, Dev docs: {n_dev}, Vocab size: {d}, Classes: {c}")
+    print(f"Train docs: {n_train}, Dev docs: {n_dev}, Dimension: {d}, Classes: {c}")
 
     # Initialize Weights & Biases run
     wandb.init(
