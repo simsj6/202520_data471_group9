@@ -3,7 +3,7 @@
 # Description: Predicting the beer style from the specific ingredients (e.g., hops, yeasts, or fermentables) used to brew the beer. This is a classification task.
 
 # example call:
-# python task5.py -config task5.config -train_feat train.sparseX -train_target train.CT -dev_feat dev.sparseX -dev_target dev.CT
+# python task5.py -config task5.config -train_feat train.sparseX -train_target train.CT -dev_feat dev.sparseX -dev_target dev.CT -test test.sparseX
 
 import argparse
 import numpy as np
@@ -36,6 +36,8 @@ def parse_arguments():
                         help='Development set feature file')
     parser.add_argument('-dev_target', type=str, required=True,
                         help='Development set target file')
+    parser.add_argument('-test', type=str, required=True,
+                        help='Test set target file')
     
     return parser.parse_args()
 
@@ -98,8 +100,8 @@ def initial_model(X_train, y_train, X_dev, y_dev):
     print()
 
 def main():
-    # start = time.time()
-    # threading.Thread(target=stopwatch, args=(start,), daemon=True).start()
+    start = time.time()
+    threading.Thread(target=stopwatch, args=(start,), daemon=True).start()
     
     # parse arguments
     args = parse_arguments()
@@ -108,6 +110,7 @@ def main():
     traintarget_fn = args.train_target
     devfeat_fn = args.dev_feat
     devtarget_fn = args.dev_target
+    test_fn = args.test
 
     # get details about data from config file
     with open(config) as file:
@@ -131,25 +134,27 @@ def main():
 
     print("\narrays made", flush=True)
 
+
     # BASELINE CALCULATION
-    train_classes = [0] * c
-    for i in range(n_train):
-        train_classes[int(y_train[i])] += 1
+    # train_classes = [0] * c
+    # for i in range(n_train):
+    #     train_classes[int(y_train[i])] += 1
     
-    train_majority = max(train_classes)
-    train_baseline = train_majority / n_train
+    # train_majority = max(train_classes)
+    # train_baseline = train_majority / n_train
 
-    dev_classes = [0] * c
-    for i in range(n_dev):
-        dev_classes[int(y_dev[i])] += 1
+    # dev_classes = [0] * c
+    # for i in range(n_dev):
+    #     dev_classes[int(y_dev[i])] += 1
     
-    dev_majority = max(dev_classes)
-    dev_baseline = dev_majority / n_dev
+    # dev_majority = max(dev_classes)
+    # dev_baseline = dev_majority / n_dev
 
-    print("Train baseline: %f" % train_baseline)
-    print("Dev baseline: %f" % dev_baseline)
+    # print("Train baseline: %f" % train_baseline)
+    # print("Dev baseline: %f" % dev_baseline)
 
-    # dimensionality reduction
+
+    # DIMENSIONALITY REDUCTION
     # train_components = 30 # chosen based on figure
     # train_tsvd = TruncatedSVD(n_components=train_components)
     # X_train = train_tsvd.fit(trainfeat_array).transform(trainfeat_array)
@@ -173,21 +178,33 @@ def main():
     print("\nit's modelin' time") # and model all over the place
 
     # XGBOOST
-    # n_est = 5000
-    # max_depth = 7
-    # lr = 0.01
-    # objective = "multi:softmax"
-    # print("\nXGBoost with n_estimators=%d, max_depth=%d, learning_rate=%.3f, objective=%s" % (n_est, max_depth, lr, objective))
-    # bst = XGBClassifier(n_estimators=n_est, max_depth=max_depth, learning_rate=lr, objective=objective)
-    # # fit model
-    # bst.fit(X_train, y_train)
-    # print("\nfitted")
-    # # make predictions
-    # y_pred_train = bst.predict(X_train)
-    # y_dev_train = bst.predict(X_dev)
+    # change to 1000 and 50
+    n_est = 1000
+    max_depth = 50
+    lr = 0.1
+    objective = "multi:softmax"
+    print("\nXGBoost with n_estimators=%d, max_depth=%d, learning_rate=%.3f, objective=%s" % (n_est, max_depth, lr, objective))
+    bst = XGBClassifier(n_estimators=n_est, max_depth=max_depth, learning_rate=lr, objective=objective)
+    # fit model
+    bst.fit(X_train, y_train)
+    print("\nfitted")
+    # make predictions
+    y_pred_train = bst.predict(X_train)
+    y_dev_train = bst.predict(X_dev)
 
-    # print('\nXGBoost train accuracy = %f' % accuracy_score(y_train, y_pred_train))
-    # print('XGBoost test accuracy = %f' % accuracy_score(y_dev, y_dev_train))
+    print('\nXGBoost train accuracy = %f' % accuracy_score(y_train, y_pred_train))
+    print('XGBoost dev accuracy = %f' % accuracy_score(y_dev, y_dev_train))
+
+
+    # TEST SET OUTPUT
+    test_array = np.loadtxt(test_fn)
+    rows = int(max(test_array[:,0])) + 1    # add one to account for 0 indexing
+    # cols = int(max(test_array[:,1])) + 1  # NEEDS TO BE SAME AS D
+    cols = d
+    X_test = format_data(test_fn, (rows, cols))
+    y_pred_test = bst.predict(X_test)
+    np.savetxt("task5.predictions", y_pred_test, fmt="%d")
+    print("\nAll done! :)")
 
 
     # NEURAL NETWORK
