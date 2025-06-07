@@ -218,8 +218,8 @@ def main():
     y_test_pred = SVR_model.predict(X_test)
     print("predicted test")
     
-    np.savetxt("task5.predictions", y_test_pred, fmt="%d")
-    print("test predictions saved to \"task5.predictions\"!")
+    np.savetxt("task3.predictions", y_test_pred, fmt="%d")
+    print("test predictions saved to \"task3.predictions\"!")
     
 if __name__ == "__main__":
     main()
